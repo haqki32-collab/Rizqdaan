@@ -18,6 +18,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onSignup, onVerifyAndLogin
   const [step, setStep] = useState<AuthStep>('form');
   const [isLoading, setIsLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  
+  // Legal Modal States
+  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'tos' | 'privacy' }>({ isOpen: false, type: 'tos' });
 
   // Form fields
   const [name, setName] = useState('');
@@ -50,14 +53,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onSignup, onVerifyAndLogin
   };
 
   const handleResendEmail = async () => {
-      // In a strict verification flow, the user is logged out after signup.
-      // To resend, they'd typically need to log in first, but Firebase allows re-sending 
-      // if we have a temporary credential or if they just signed up.
-      // For this implementation, we advise users to return to login if they closed the session.
       setResending(true);
       setError('');
       try {
-          // If the session is still active (just after signup)
           if (auth.currentUser) {
               await sendEmailVerification(auth.currentUser);
               setInfo("Verification email sent again. Please check your inbox!");
@@ -283,8 +281,322 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onSignup, onVerifyAndLogin
       </div>
       
       <div className="mt-8 text-center">
-          <p className="text-xs text-gray-500 font-medium">By continuing, you agree to our <span className="text-primary underline">Terms of Service</span> and <span className="text-primary underline">Privacy Policy</span>.</p>
+          <p className="text-xs text-gray-500 font-medium">
+              By continuing, you agree to our 
+              <button onClick={() => setLegalModal({ isOpen: true, type: 'tos' })} className="text-primary underline mx-1">Terms of Service</button> 
+              and 
+              <button onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })} className="text-primary underline mx-1">Privacy Policy</button>.
+          </p>
       </div>
+
+      {/* 📜 LEGAL MODAL */}
+      {legalModal.isOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
+              <div className="bg-white dark:bg-dark-surface w-full max-w-lg rounded-[2.5rem] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-white/20">
+                  <div className="p-6 border-b dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
+                      <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tighter">
+                          {legalModal.type === 'tos' ? 'Terms of Service' : 'Privacy Policy'}
+                      </h3>
+                      <button onClick={() => setLegalModal({ ...legalModal, isOpen: false })} className="p-2 bg-gray-200 dark:bg-gray-700 rounded-full hover:scale-110 transition-transform active:scale-90">
+                          <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-8 text-sm sm:text-base text-gray-600 dark:text-gray-300 leading-relaxed custom-scrollbar bg-white dark:bg-dark-surface">
+                      {legalModal.type === 'tos' ? (
+                          <div className="space-y-6">
+                              <h2 className="text-xl font-bold text-gray-900 dark:text-white text-center underline">Terms of Service</h2>
+                              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest text-center">Last Updated: January 2026</p>
+                              
+                              <p>Welcome to RizqDaan. These Terms of Service ("Terms", "Agreement") constitute a legally binding agreement between you ("User", "You", "Your") and RizqDaan ("RizqDaan", "We", "Us", "Our") governing your access to and use of the RizqDaan mobile application, website, and all related services, features, content, and products (collectively, the "Platform").</p>
+                              
+                              <p>By downloading, installing, accessing, or using the Platform, you acknowledge that you have read, understood, and agree to be bound by these Terms. If you do not agree with any part of these Terms, you must immediately stop using the Platform.</p>
+
+                              <hr className="dark:border-gray-800" />
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">1. About RizqDaan</h4>
+                                  <p>RizqDaan is a digital business listing and advertisement platform designed to connect local sellers, service providers, and businesses with potential buyers and customers. The Platform allows vendors to list their products or services, display contact information, and promote their offerings. Buyers may browse listings and contact sellers directly.</p>
+                                  <p className="mt-2 font-bold">RizqDaan does not:</p>
+                                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                                      <li>Sell, resell, or distribute any products or services</li>
+                                      <li>Act as a broker, agent, or representative of buyers or sellers</li>
+                                      <li>Guarantee quality, pricing, availability, delivery, or performance of any product or service</li>
+                                      <li>Handle payments, refunds, deliveries, or disputes between users unless explicitly stated</li>
+                                  </ul>
+                                  <p className="mt-2">All transactions, communications, and agreements are conducted directly between buyers and sellers, and RizqDaan is not a party to such transactions.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">2. Eligibility and User Requirements</h4>
+                                  <p>To use the Platform, you must:</p>
+                                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                                      <li>Be at least 18 years old, or have legal parental or guardian consent</li>
+                                      <li>Be legally capable of entering into binding contracts under applicable laws of Pakistan</li>
+                                      <li>Provide accurate, complete, and truthful information during registration and use</li>
+                                      <li>Use the Platform only for lawful purposes</li>
+                                  </ul>
+                                  <p className="mt-2">We reserve the right to refuse access, suspend accounts, or terminate services to any user who does not meet these eligibility requirements.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">3. Account Registration and Security</h4>
+                                  <h5 className="font-bold mt-2">3.1 Account Creation</h5>
+                                  <p>To access certain features, you may be required to create an account. You agree to:</p>
+                                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                                      <li>Provide accurate and up-to-date information</li>
+                                      <li>Maintain the confidentiality of your login credentials</li>
+                                      <li>Update your information if it changes</li>
+                                  </ul>
+                                  <h5 className="font-bold mt-2">3.2 Account Responsibility</h5>
+                                  <p>You are solely responsible for:</p>
+                                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                                      <li>All activities that occur under your account</li>
+                                      <li>Maintaining the security of your password and device</li>
+                                  </ul>
+                                  <p className="mt-2">RizqDaan will not be liable for any loss or damage arising from unauthorized access to your account.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">4. Vendor and Seller Responsibilities</h4>
+                                  <p>If you register as a seller or service provider, you agree that:</p>
+                                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                                      <li>All listings must be accurate, lawful, and not misleading</li>
+                                      <li>You own or have legal rights to sell or advertise the listed products or services</li>
+                                      <li>Your listings comply with all applicable local, provincial, and federal laws</li>
+                                      <li>You will handle customer inquiries, payments, refunds, and deliveries independently</li>
+                                  </ul>
+                                  <p className="mt-2">RizqDaan reserves the right to edit, reject, suspend, or remove any listing that violates these Terms without prior notice.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">5. Buyer Responsibilities</h4>
+                                  <p>As a buyer or viewer, you acknowledge that:</p>
+                                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                                      <li>You are responsible for verifying seller credibility before any transaction</li>
+                                      <li>RizqDaan does not guarantee seller identity, quality, or reliability</li>
+                                      <li>Any transaction you enter into is at your own risk</li>
+                                  </ul>
+                                  <p className="mt-2">We strongly recommend meeting sellers safely, verifying products, and avoiding advance payments where possible.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">6. Subscription Fees and Payments</h4>
+                                  <p>Some features of the Platform may require a paid subscription or promotional fee. By purchasing a subscription, you agree that:</p>
+                                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                                      <li>Fees are charged as described at the time of purchase</li>
+                                      <li>Payments are non-refundable unless explicitly stated</li>
+                                      <li>RizqDaan may change pricing with prior notice</li>
+                                  </ul>
+                                  <p className="mt-2">Failure to pay applicable fees may result in suspension or removal of listings.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">7. Prohibited Activities</h4>
+                                  <p>You agree not to:</p>
+                                  <ul className="list-disc ml-5 mt-1 space-y-1">
+                                      <li>Post false, misleading, or fraudulent listings</li>
+                                      <li>Engage in illegal, harmful, abusive, or deceptive activities</li>
+                                      <li>Upload viruses, malware, or harmful code</li>
+                                      <li>Attempt to bypass security or access restricted areas</li>
+                                      <li>Use the Platform for money laundering, scams, or prohibited goods</li>
+                                  </ul>
+                                  <p className="mt-2">Violation of this section may result in immediate account termination and legal action.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">8. Content Ownership and License</h4>
+                                  <h5 className="font-bold mt-2">8.1 User Content</h5>
+                                  <p>You retain ownership of any content you submit, including text, images, and business information. However, by posting content, you grant RizqDaan a non-exclusive, royalty-free, worldwide license to use, display, reproduce, and promote such content for Platform-related purposes.</p>
+                                  <h5 className="font-bold mt-2">8.2 Platform Content</h5>
+                                  <p>All logos, trademarks, designs, software, and content provided by RizqDaan are owned by or licensed to us and may not be copied, modified, or distributed without written permission.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">9. Privacy and Data Protection</h4>
+                                  <p>Your use of the Platform is also governed by our Privacy Policy, which explains how we collect, use, and protect your personal data. By using RizqDaan, you consent to such data practices.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">10. Third-Party Services and Links</h4>
+                                  <p>The Platform may contain links to third-party websites or services. RizqDaan does not control or endorse these services and is not responsible for their content, policies, or practices. You access third-party services at your own risk.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">11. Disclaimers</h4>
+                                  <p>The Platform is provided on an "as is" and "as available" basis. To the fullest extent permitted by law, RizqDaan disclaims all warranties, including but not limited to: Merchantability, Fitness for a particular purpose, Accuracy or reliability of listings, Uninterrupted or error-free service.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">12. Limitation of Liability</h4>
+                                  <p>To the maximum extent permitted by law, RizqDaan shall not be liable for: Any indirect, incidental, or consequential damages, Loss of profits, data, or business, Disputes, losses, or damages arising from user transactions. Your sole remedy is to stop using the Platform.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">13. Indemnification</h4>
+                                  <p>You agree to indemnify and hold harmless RizqDaan, its owners, employees, and partners from any claims, damages, losses, or expenses arising out of: Your use of the Platform, Your violation of these Terms, Your interaction or transactions with other users.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">14. Suspension and Termination</h4>
+                                  <p>RizqDaan reserves the right to: Suspend or terminate accounts without notice, Remove content or listings at its discretion, Restrict access for violations of these Terms. Upon termination, all rights granted to you under these Terms will immediately cease.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">15. Modifications to Terms</h4>
+                                  <p>We may update or modify these Terms at any time. Continued use of the Platform after changes constitutes acceptance of the revised Terms.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">16. Governing Law and Jurisdiction</h4>
+                                  <p>These Terms shall be governed by and construed in accordance with the laws of the Islamic Republic of Pakistan. Any disputes shall be subject to the exclusive jurisdiction of the courts of Pakistan.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">17. Severability</h4>
+                                  <p>If any provision of these Terms is found to be invalid or unenforceable, the remaining provisions shall remain in full force and effect.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">18. Entire Agreement</h4>
+                                  <p>These Terms, together with our Privacy Policy, constitute the entire agreement between you and RizqDaan regarding use of the Platform.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">19. Contact Information</h4>
+                                  <p>If you have any questions, concerns, or legal notices regarding these Terms, you may contact us through the official support channels within the app or via WhatsApp at +92370957756.</p>
+                              </div>
+                          </div>
+                      ) : (
+                          <div className="space-y-6">
+                              <h2 className="text-xl font-bold text-gray-900 dark:text-white text-center underline">Privacy Policy</h2>
+                              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest text-center">Last updated: January 2026</p>
+                              
+                              <p>This Privacy Policy describes how we collect, use, disclose, and protect your information when you use our mobile application, website, and related services (collectively, the “App” or “Services”). By accessing or using our App, you agree to the collection and use of information in accordance with this Privacy Policy.</p>
+                              <p>We are committed to protecting your privacy and ensuring transparency regarding how your data is handled.</p>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">1. Introduction</h4>
+                                  <p>Your privacy is extremely important to us. This Privacy Policy explains: What information we collect, How we use your information, How we store and protect your data, When and why we share information, Your rights and choices regarding your data. If you do not agree with this Privacy Policy, please do not use our App.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">2. Information We Collect</h4>
+                                  <p>We collect different types of information for various purposes to provide and improve our services.</p>
+                                  <h5 className="font-bold mt-2">2.1 Personal Information</h5>
+                                  <p>We may collect personally identifiable information, including: Full name, Phone number, Email address, Profile photo, Business name, Business address and location. This is collected when you register, create a profile, or list services.</p>
+                                  <h5 className="font-bold mt-2">2.2 Non-Personal Information</h5>
+                                  <p>We automatically collect certain non-identifiable information such as: Device type, Operating system, IP address, and Usage statistics to help us understand how users interact with the App.</p>
+                                  <h5 className="font-bold mt-2">2.3 Location Information</h5>
+                                  <p>We may collect: Approximate location (city-level) and location you manually provide in listings. We do not track real-time GPS location unless explicitly permitted by you.</p>
+                                  <h5 className="font-bold mt-2">2.4 User-Generated Content</h5>
+                                  <p>We collect content you voluntarily submit, including listings, images, videos, reviews, and messages sent through the App.</p>
+                                  <h5 className="font-bold mt-2">2.5 Payment Information</h5>
+                                  <p>We do not store sensitive payment details such as card numbers. Payments are processed through third-party providers.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">3. How We Use Your Information</h4>
+                                  <p>We use information to: provide and maintain the App, create and manage accounts, verify users and prevent fraud, display listings, communicate with users, provide support, and improve app performance.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">4. Sharing of Information</h4>
+                                  <p>We do not sell or rent your personal data. We may share information: With other users (public business details), With service providers (hosting, analytics), For legal requirements (court orders), or during business transfers.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">5. Data Storage and Security</h4>
+                                  <p>We take reasonable security measures to protect your information, including secure servers and encrypted connections (HTTPS). However, no method of transmission over the internet is 100% secure.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">6. Data Retention</h4>
+                                  <p>We retain your information only for as long as necessary to provide services, comply with legal obligations, and resolve disputes. You may request deletion of your account at any time.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">7. User Rights</h4>
+                                  <p>You may have the right to: Access your personal data, Correct inaccurate information, Request deletion of your data, or Withdraw consent. You can exercise these rights by contacting us.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">8. Account Deletion</h4>
+                                  <p>You may delete your account through app settings or by contacting customer support. Upon deletion, your personal data will be permanently removed unless required by law.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">9. Cookies and Tracking Technologies</h4>
+                                  <p>We may use cookies or similar technologies to improve user experience and analyze usage. You can disable cookies through your device settings.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">10. Third-Party Links</h4>
+                                  <p>Our App may contain links to third-party websites. We are not responsible for their privacy practices and encourage you to review their policies.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">11. Children’s Privacy</h4>
+                                  <p>Our App is not intended for children under 13. We do not knowingly collect personal information from children and will delete such data if identified.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">12. Advertisements</h4>
+                                  <p>We may display advertisements through third-party networks. These networks may collect non-personal data to show relevant ads.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">13. Push Notifications</h4>
+                                  <p>We may send push notifications for account updates and new features. You can disable notifications through your device settings.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">14. International Data Transfers</h4>
+                                  <p>Your information may be stored or processed outside your country. By using the App, you consent to such transfers.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">15. Changes to This Privacy Policy</h4>
+                                  <p>We reserve the right to update this Privacy Policy at any time. Continued use of the App constitutes acceptance of the revised policy.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">16. Consent</h4>
+                                  <p>By using our App, you confirm that you have read and understood this Privacy Policy and agree to its terms.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">17. Contact Information</h4>
+                                  <p>If you have any questions regarding this policy, you may contact us via WhatsApp at +92370957756.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">18. Compliance with Laws</h4>
+                                  <p>We comply with applicable data protection laws, local privacy laws, and platform policies of Google Play and Apple App Store.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">19. Limitation of Liability</h4>
+                                  <p>We are not responsible for unauthorized access beyond our control or third-party actions.</p>
+                              </div>
+
+                              <div>
+                                  <h4 className="font-black text-gray-900 dark:text-white text-base mb-2">20. Final Acknowledgment</h4>
+                                  <p>By continuing to use our App, you acknowledge that you have read, understood, and agreed to this Privacy Policy.</p>
+                              </div>
+
+                              <div className="p-4 bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20">
+                                  <p className="text-xs text-primary font-bold">Official Support:</p>
+                                  <p className="text-sm dark:text-gray-300">WhatsApp: +92370957756</p>
+                              </div>
+                          </div>
+                      )}
+                  </div>
+                  <div className="p-6 border-t dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 flex justify-center">
+                       <button onClick={() => setLegalModal({ ...legalModal, isOpen: false })} className="px-10 py-3 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-full shadow-lg active:scale-95 transition-all">I Understand & Accept</button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };

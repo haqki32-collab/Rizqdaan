@@ -5,20 +5,54 @@ import ManageListings from '../vendor/ManageListings';
 import VendorAnalytics from '../vendor/VendorAnalytics';
 import VendorPromotions from '../vendor/VendorPromotions';
 import { Listing, User } from '../../types';
+import { db } from '../../firebaseConfig';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 type VendorTab = 'dashboard' | 'my-listings' | 'add-listing' | 'promotions';
 
 interface VendorDashboardProps {
   initialTab: VendorTab;
-  listings: Listing[];
+  listings: Listing[]; // This global list might be limited
   user: User | null;
   onNavigate?: (view: string, payload?: any) => void;
 }
 
-const VendorDashboard: React.FC<VendorDashboardProps> = ({ initialTab, listings, user, onNavigate }) => {
+const VendorDashboard: React.FC<VendorDashboardProps> = ({ initialTab, user, onNavigate }) => {
   const [activeTab, setActiveTab] = useState<VendorTab>(initialTab);
   const [listingToEdit, setListingToEdit] = useState<Listing | null>(null);
   const [listingToPromoteId, setListingToPromoteId] = useState<string | undefined>(undefined);
+  const [vendorListings, setVendorListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // CRITICAL: Fetch ALL listings for this vendor to ensure analytics are accurate
+  useEffect(() => {
+    if (!user?.id || !db) {
+        setLoading(false);
+        return;
+    }
+
+    setLoading(true);
+    const q = query(
+        collection(db, "listings"),
+        where("vendorId", "==", user.id)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing));
+        items.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0).getTime();
+            const dateB = new Date(b.createdAt || 0).getTime();
+            return dateB - dateA;
+        });
+        setVendorListings(items);
+        setLoading(false);
+    }, (err) => {
+        console.error("VendorDashboard data error:", err.message);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user?.id]);
 
   useEffect(() => {
       const validTab = ['dashboard', 'my-listings', 'add-listing', 'promotions'].includes(initialTab) 
@@ -60,11 +94,11 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ initialTab, listings,
   const renderTabContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <VendorAnalytics listings={listings} user={user} />;
+        return <VendorAnalytics listings={vendorListings} user={user} />;
       case 'my-listings':
         return (
             <ManageListings 
-                listings={listings} 
+                listings={vendorListings} 
                 user={user} 
                 onEdit={handleEditListing} 
                 onPreview={handlePreview}
@@ -83,11 +117,11 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ initialTab, listings,
             <VendorPromotions 
                 user={user} 
                 initialListingId={listingToPromoteId} 
-                onNavigate={(view) => onNavigate && onNavigate(view)}
+                onNavigate={(view) => onNavigate && onNavigate(view as any)}
             />
         );
       default:
-        return <VendorAnalytics listings={listings} user={user} />;
+        return <VendorAnalytics listings={vendorListings} user={user} />;
     }
   };
 
@@ -127,7 +161,12 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ initialTab, listings,
       {/* Main Content */}
       <main className="w-full md:w-3/4">
         <div className="p-6 bg-white dark:bg-dark-surface rounded-xl shadow-lg min-h-[500px]">
-          {renderTabContent()}
+          {loading ? (
+             <div className="flex flex-col items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
+                <p className="mt-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest">Loading Analytics...</p>
+             </div>
+          ) : renderTabContent()}
         </div>
       </main>
     </div>

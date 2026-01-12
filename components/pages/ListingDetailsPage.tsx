@@ -255,23 +255,39 @@ const ListingDetailsPage: React.FC<ListingDetailsPageProps> = ({ listing, listin
           </div>
       )}
 
-      {/* 💎 PRIMARY INFO & PRICE */}
+      {/* 💎 PRIMARY INFO & PRICE - Redesigned to stack and never overlap */}
       <SectionWrapper className="!pb-2">
-          <div className="flex justify-between items-start mb-4">
-              <div className="flex-1 pr-4">
+          <div className="space-y-4">
+              {/* Title and Location */}
+              <div>
                   <h1 className="text-2xl font-black text-gray-900 dark:text-white leading-tight mb-2 tracking-tight">{listing.title}</h1>
                   <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
                     <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     <span className="truncate">{listing.location}</span>
                   </div>
               </div>
-              <div className="text-right">
-                  <div className="text-3xl font-black text-primary dark:text-white mb-0.5 whitespace-nowrap">Rs. {listing.price.toLocaleString()}</div>
-                  {listing.originalPrice && <p className="text-sm text-red-500 line-through font-bold opacity-80">Rs. {listing.originalPrice.toLocaleString()}</p>}
-                  {discountPercent > 0 && <span className="inline-block mt-1 bg-accent-yellow text-primary text-[10px] font-black px-2 py-1 rounded-md shadow-sm uppercase">{discountPercent}% OFF</span>}
+
+              {/* High Profile Price Box */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                  <div>
+                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Asking Price</p>
+                      <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-black text-primary dark:text-white">Rs. {listing.price.toLocaleString()}</span>
+                          {listing.originalPrice && (
+                              <span className="text-sm text-gray-400 line-through font-bold decoration-red-500/30">Rs. {listing.originalPrice.toLocaleString()}</span>
+                          )}
+                      </div>
+                  </div>
+                  {discountPercent > 0 && (
+                      <div className="bg-red-500 text-white px-3 py-1.5 rounded-xl shadow-lg shadow-red-500/20 text-center flex flex-col items-center">
+                          <span className="text-[8px] font-black uppercase leading-none opacity-80">Save</span>
+                          <span className="text-lg font-black leading-none">{discountPercent}%</span>
+                      </div>
+                  )}
               </div>
           </div>
-          <div className="flex items-center justify-between pt-5 border-t border-gray-50 dark:border-gray-800">
+
+          <div className="flex items-center justify-between pt-5 mt-4 border-t border-gray-50 dark:border-gray-800">
               <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 rounded-full border dark:border-gray-700">
                   <div className="flex text-accent-yellow text-xs gap-0.5">
                       {[...Array(5)].map((_, i) => (

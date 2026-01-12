@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Listing, User, Review } from '../../types';
 import { db } from '../../firebaseConfig';
-import { doc, updateDoc, arrayUnion, arrayRemove, increment, getDoc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, arrayRemove, increment, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import ListingCard from '../common/ListingCard';
 
 interface ListingDetailsPageProps {
@@ -102,6 +102,30 @@ const ListingDetailsPage: React.FC<ListingDetailsPageProps> = ({ listing, listin
         if (scrollRef.current) {
             const width = scrollRef.current.clientWidth;
             scrollRef.current.scrollLeft = activeIndex * width;
+        }
+    };
+
+    // --- ANALYTICS: Conversation Tracking ---
+    const trackConversation = async (type: 'chat' | 'whatsapp') => {
+        if (!db || !listing.id) return;
+        try {
+            const listingRef = doc(db, 'listings', listing.id);
+            await updateDoc(listingRef, { messages: increment(1) });
+
+            // If promoted, also increment conversion in the active campaign
+            if (listing.isPromoted) {
+                const q = query(
+                    collection(db, 'campaigns'),
+                    where('listingId', '==', listing.id),
+                    where('status', '==', 'active')
+                );
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    await updateDoc(snap.docs[0].ref, { conversions: increment(1) });
+                }
+            }
+        } catch (e) {
+            console.warn("Analytics tracking error (silent):", e);
         }
     };
 
@@ -255,10 +279,9 @@ const ListingDetailsPage: React.FC<ListingDetailsPageProps> = ({ listing, listin
           </div>
       )}
 
-      {/* 💎 PRIMARY INFO & PRICE - Redesigned to stack and never overlap */}
+      {/* 💎 PRIMARY INFO & PRICE */}
       <SectionWrapper className="!pb-2">
           <div className="space-y-4">
-              {/* Title and Location */}
               <div>
                   <h1 className="text-2xl font-black text-gray-900 dark:text-white leading-tight mb-2 tracking-tight">{listing.title}</h1>
                   <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
@@ -267,7 +290,6 @@ const ListingDetailsPage: React.FC<ListingDetailsPageProps> = ({ listing, listin
                   </div>
               </div>
 
-              {/* High Profile Price Box */}
               <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between">
                   <div>
                       <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Asking Price</p>
@@ -304,7 +326,11 @@ const ListingDetailsPage: React.FC<ListingDetailsPageProps> = ({ listing, listin
       <SectionWrapper className="!bg-primary/5 dark:!bg-primary/10">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button 
-                onClick={() => { if (!user) { alert("Please login to chat."); return; } onNavigate('chats', { targetUser: { id: listing.vendorId, name: vendorData?.shopName || listing.vendorName } }); }} 
+                onClick={() => { 
+                    if (!user) { alert("Please login to chat."); return; } 
+                    trackConversation('chat');
+                    onNavigate('chats', { targetUser: { id: listing.vendorId, name: vendorData?.shopName || listing.vendorName } }); 
+                }} 
                 className="flex items-center justify-center gap-3 h-14 bg-white dark:bg-dark-surface text-primary dark:text-white font-black rounded-2xl active:scale-95 transition-all border-2 border-primary shadow-sm"
               >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
@@ -312,6 +338,7 @@ const ListingDetailsPage: React.FC<ListingDetailsPageProps> = ({ listing, listin
               </button>
 
               <a 
+                onClick={() => trackConversation('whatsapp')}
                 href={`https://wa.me/${(vendorData?.phone || listing.contact.whatsapp).replace(/[^0-9]/g, '')}`} 
                 target="_blank" 
                 rel="noreferrer"
@@ -322,6 +349,10 @@ const ListingDetailsPage: React.FC<ListingDetailsPageProps> = ({ listing, listin
               </a>
 
               <a 
+                onClick={() => {
+                    const listingRef = doc(db, 'listings', listing.id);
+                    updateDoc(listingRef, { calls: increment(1) }).catch(()=>{});
+                }}
                 href={`tel:${vendorData?.phone || listing.contact.phone}`} 
                 className="flex items-center justify-center gap-3 h-14 bg-primary text-white font-black rounded-2xl active:scale-95 transition-all shadow-lg shadow-primary/30"
               >

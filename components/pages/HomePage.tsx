@@ -254,12 +254,6 @@ const HomePage: React.FC<HomePageProps> = ({ listings, categories = [], onNaviga
       </div>
       
       {isLoading && <div className="flex justify-center items-center py-4"><div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent"></div></div>}
-      
-      <div className="pt-8 pb-4 text-center border-t border-gray-100 dark:border-gray-800/40 mt-6">
-        <p className="text-[9px] text-gray-400 dark:text-gray-500 font-mono tracking-widest uppercase">
-          Build v1.1.4 • Sync: 2026-06-22 11:53 UTC
-        </p>
-      </div>
     </div>
   );
 };

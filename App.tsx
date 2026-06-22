@@ -64,7 +64,9 @@ const App: React.FC = () => {
     if (newView !== 'listings' && newView !== 'details') setSearchQuery('');
     
     if (payload?.listing && newView === 'details') setSelectedListing(payload.listing);
-    if (payload?.category && newView === 'subcategories') setSelectedCategory(payload.category);
+    if (newView === 'subcategories') {
+        setSelectedCategory(payload?.category || null);
+    }
     if (payload?.query !== undefined && newView === 'listings') setSearchQuery(payload.query);
     if (payload?.targetUser && newView === 'chats') setChatTargetUser(payload.targetUser);
     if (payload?.targetVendorId && newView === 'vendor-profile') setSelectedVendorId(payload.targetVendorId);

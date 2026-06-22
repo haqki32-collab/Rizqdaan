@@ -59,7 +59,7 @@ const SubCategoryPage: React.FC<SubCategoryPageProps> = ({ category, categories 
           </button>
           <div className="ml-2">
             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">
-              {category ? `${category.name}` : 'All Categories'}
+              {category ? `${category.name}` : '10 Main Categories'}
             </h1>
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
               {category ? 'Browse Subcategories' : 'Choose a classification'}

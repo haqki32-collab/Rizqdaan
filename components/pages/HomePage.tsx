@@ -212,7 +212,7 @@ const HomePage: React.FC<HomePageProps> = ({ listings, categories = [], onNaviga
       <div>
         <div className="flex justify-between items-center mb-2 px-1">
             <h3 className="text-sm font-bold text-gray-800 dark:text-white">Categories</h3>
-            <span className="text-[10px] text-primary font-medium cursor-pointer" onClick={() => onNavigate('listings')}>View All</span>
+            <span className="text-[10px] text-primary font-medium cursor-pointer" onClick={() => onNavigate('subcategories')}>View All</span>
         </div>
         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 gap-2">
           {displayCategories.slice(0, 8).map((category) => (
@@ -254,6 +254,12 @@ const HomePage: React.FC<HomePageProps> = ({ listings, categories = [], onNaviga
       </div>
       
       {isLoading && <div className="flex justify-center items-center py-4"><div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent"></div></div>}
+      
+      <div className="pt-8 pb-4 text-center border-t border-gray-100 dark:border-gray-800/40 mt-6">
+        <p className="text-[9px] text-gray-400 dark:text-gray-500 font-mono tracking-widest uppercase">
+          Build v1.1.4 • Sync: 2026-06-22 11:53 UTC
+        </p>
+      </div>
     </div>
   );
 };

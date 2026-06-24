@@ -149,6 +149,33 @@ const App: React.FC = () => {
     };
   }, [handleGoBack, view]);
 
+  // Google Analytics Page View Tracking
+  useEffect(() => {
+    if (typeof (window as any).gtag === 'function') {
+      const GA_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-1ES343KS3J';
+      if (GA_ID) {
+        let viewTitle = view.charAt(0).toUpperCase() + view.slice(1);
+        let pathName = `/${view}`;
+        
+        if (view === 'home') {
+          pathName = '/';
+          viewTitle = 'RizqDaan - Home';
+        } else if (view === 'details' && selectedListing) {
+          pathName = `/listings/${selectedListing.id}`;
+          viewTitle = `${selectedListing.title} - RizqDaan`;
+        } else if (view === 'subcategories') {
+          pathName = selectedCategory ? `/categories/${selectedCategory.id}` : '/categories';
+          viewTitle = selectedCategory ? `${selectedCategory.name} - Categories` : 'Main Categories';
+        }
+
+        (window as any).gtag('config', GA_ID, {
+          page_title: viewTitle,
+          page_path: pathName,
+        });
+      }
+    }
+  }, [view, selectedListing, selectedCategory]);
+
   // --- FIREBASE DATA LOGIC ---
   const triggerNativeNotification = (title: string, body: string) => {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;

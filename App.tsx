@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, Unsubscribe, sendEmailVerification } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, Unsubscribe } from 'firebase/auth';
 import { doc, setDoc, collection, onSnapshot, query, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, where } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -226,7 +226,7 @@ const App: React.FC = () => {
     let userUnsubscribe: Unsubscribe | null = null;
     const authUnsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
-          if (firebaseUser && firebaseUser.emailVerified) {
+          if (firebaseUser) {
               if (db) {
                   userUnsubscribe = onSnapshot(doc(db, "users", firebaseUser.uid), (docSnap) => {
                       if (docSnap.exists()) setUser({ id: firebaseUser.uid, ...docSnap.data() } as User);
@@ -297,8 +297,7 @@ const App: React.FC = () => {
             const adminUser: User = { id: 'admin-demo', name: 'Admin', email: 'admin@rizqdaan.com', phone: '0000', shopName: 'Admin HQ', shopAddress: 'Cloud', isVerified: true, isAdmin: true };
             setUser(adminUser); handleNavigate('admin'); return { success: true, message: 'Logged in' };
         }
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        if (!userCredential.user.emailVerified) { await signOut(auth); return { success: false, message: 'Verify email.' }; }
+        await signInWithEmailAndPassword(auth, email, password);
         return { success: true, message: 'Login successful!' };
     } catch (error: any) { return { success: false, message: error.message }; }
   };
@@ -306,17 +305,16 @@ const App: React.FC = () => {
   const handleSignup = async (userData: any) => {
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password || 'password123');
-        await sendEmailVerification(userCredential.user);
         const newUserId = userCredential.user.uid;
         const newUserProfile: User = {
             id: newUserId, name: userData.name, email: userData.email, phone: userData.phone,
-            shopName: userData.shopName, shopAddress: userData.shopAddress, isVerified: false,
+            shopName: userData.shopName, shopAddress: userData.shopAddress, isVerified: true,
             referralCode: `USER-${Math.floor(1000 + Math.random() * 9000)}`, referredBy: null,
             wallet: { balance: 0, totalSpend: 0, pendingDeposit: 0, pendingWithdrawal: 0 },
             walletHistory: [], favorites: []
         };
         await setDoc(doc(db, "users", newUserId), newUserProfile);
-        await signOut(auth);
+        setUser(newUserProfile);
         return { success: true, message: 'Signup successful!', user: newUserProfile };
     } catch (error: any) { return { success: false, message: error.message }; }
   };
@@ -339,8 +337,8 @@ const App: React.FC = () => {
       case 'details': return selectedListing ? <ListingDetailsPage listing={selectedListing} listings={listingsDB} user={user} onNavigate={handleNavigate as any} /> : null;
       case 'vendor-dashboard': return <VendorDashboard initialTab={initialVendorTab} listings={listingsDB} user={user} onNavigate={handleNavigate as any} />;
       case 'vendor-profile': return selectedVendorId ? <VendorProfilePage vendorId={selectedVendorId} currentUser={user} listings={listingsDB} onNavigate={handleNavigate as any} /> : null;
-      case 'auth': return <AuthPage onLogin={handleLogin} onSignup={handleSignup} onVerifyAndLogin={() => handleNavigate('auth')} />;
-      case 'account': return user ? <AccountPage user={user} listings={listingsDB} onLogout={() => { signOut(auth); setUser(null); handleNavigate('home'); }} onNavigate={handleNavigate as any} /> : <AuthPage onLogin={handleLogin} onSignup={handleSignup} onVerifyAndLogin={() => handleNavigate('auth')} />;
+      case 'auth': return <AuthPage onLogin={async (e, p) => { const res = await handleLogin(e, p); if (res.success) handleNavigate('home'); return res; }} onSignup={async (data) => { const res = await handleSignup(data); if (res.success) handleNavigate('home'); return res; }} onVerifyAndLogin={() => handleNavigate('home')} />;
+      case 'account': return user ? <AccountPage user={user} listings={listingsDB} onLogout={() => { signOut(auth); setUser(null); handleNavigate('home'); }} onNavigate={handleNavigate as any} /> : <AuthPage onLogin={async (e, p) => { const res = await handleLogin(e, p); if (res.success) handleNavigate('home'); return res; }} onSignup={async (data) => { const res = await handleSignup(data); if (res.success) handleNavigate('home'); return res; }} onVerifyAndLogin={() => handleNavigate('home')} />;
       case 'subcategories': return <SubCategoryPage category={selectedCategory} categories={categories} onNavigate={() => handleGoBack()} onListingNavigate={(v, q) => handleNavigate(v as any, { query: q })} />;
       case 'chats': return user ? <ChatPage currentUser={user} targetUser={chatTargetUser} onNavigate={() => handleGoBack()} /> : null;
       case 'favorites': return user ? <FavoritesPage user={user} listings={listingsDB} onNavigate={handleNavigate as any} /> : null;

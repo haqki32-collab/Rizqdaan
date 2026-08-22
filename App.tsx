@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, Unsubscribe } from 'firebase/auth';
-import { doc, setDoc, collection, onSnapshot, query, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, where } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, onSnapshot, query, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, where } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
 import { App as CapacitorApp } from '@capacitor/app';
 import { auth, db, messaging } from './firebaseConfig';
@@ -222,22 +222,65 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!auth) { setIsReady(true); return; }
-    const timeout = setTimeout(() => { if (!isReady) setIsReady(true); }, 6000);
+    const timeout = setTimeout(() => { if (!isReady) setIsReady(true); }, 5000);
     let userUnsubscribe: Unsubscribe | null = null;
     const authUnsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
           if (firebaseUser) {
               if (db) {
                   userUnsubscribe = onSnapshot(doc(db, "users", firebaseUser.uid), (docSnap) => {
-                      if (docSnap.exists()) setUser({ id: firebaseUser.uid, ...docSnap.data() } as User);
-                      clearTimeout(timeout); setIsReady(true);
+                      if (docSnap.exists()) {
+                          setUser({ id: firebaseUser.uid, ...docSnap.data() } as User);
+                      } else {
+                          setUser(prev => prev && prev.id === firebaseUser.uid ? prev : ({
+                              id: firebaseUser.uid,
+                              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                              email: firebaseUser.email || '',
+                              phone: '',
+                              shopName: '',
+                              shopAddress: '',
+                              isVerified: true
+                          } as User));
+                      }
+                      clearTimeout(timeout); 
+                      setIsReady(true);
+                  }, (err) => {
+                      console.warn("User snapshot error:", err);
+                      setUser(prev => prev || ({
+                          id: firebaseUser.uid,
+                          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                          email: firebaseUser.email || '',
+                          phone: '',
+                          shopName: '',
+                          shopAddress: '',
+                          isVerified: true
+                      } as User));
+                      clearTimeout(timeout); 
+                      setIsReady(true);
                   });
-              } else { setIsReady(true); }
+              } else { 
+                  setUser({
+                      id: firebaseUser.uid,
+                      name: firebaseUser.displayName || 'User',
+                      email: firebaseUser.email || '',
+                      phone: '',
+                      shopName: '',
+                      shopAddress: '',
+                      isVerified: true
+                  } as User);
+                  clearTimeout(timeout);
+                  setIsReady(true); 
+              }
           } else {
               if (userUnsubscribe) userUnsubscribe();
-              setUser(null); clearTimeout(timeout); setIsReady(true);
+              setUser(null); 
+              clearTimeout(timeout); 
+              setIsReady(true);
           }
-      } catch (e) { setIsReady(true); }
+      } catch (e) { 
+          clearTimeout(timeout);
+          setIsReady(true); 
+      }
     });
     return () => { authUnsubscribe(); if (userUnsubscribe) userUnsubscribe(); clearTimeout(timeout); };
   }, []);
@@ -297,26 +340,92 @@ const App: React.FC = () => {
             const adminUser: User = { id: 'admin-demo', name: 'Admin', email: 'admin@rizqdaan.com', phone: '0000', shopName: 'Admin HQ', shopAddress: 'Cloud', isVerified: true, isAdmin: true };
             setUser(adminUser); handleNavigate('admin'); return { success: true, message: 'Logged in' };
         }
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const uid = userCredential.user.uid;
+        
+        if (db) {
+            try {
+                const userDoc = await Promise.race([
+                    getDoc(doc(db, "users", uid)),
+                    new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
+                ]);
+                if (userDoc && userDoc.exists()) {
+                    setUser({ id: uid, ...userDoc.data() } as User);
+                } else if (!user) {
+                    setUser({
+                        id: uid,
+                        name: userCredential.user.displayName || email.split('@')[0],
+                        email: email,
+                        phone: '',
+                        shopName: '',
+                        shopAddress: '',
+                        isVerified: true
+                    } as User);
+                }
+            } catch (e) {
+                console.warn("User fetch error:", e);
+            }
+        }
         return { success: true, message: 'Login successful!' };
-    } catch (error: any) { return { success: false, message: error.message }; }
+    } catch (error: any) { 
+        console.error("Login error:", error);
+        let msg = error.message;
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            msg = 'Invalid email or password. Please try again.';
+        } else if (error.code === 'auth/too-many-requests') {
+            msg = 'Too many failed attempts. Please try again in a few minutes.';
+        } else if (error.code === 'auth/network-request-failed') {
+            msg = 'Network error. Please check your internet connection.';
+        }
+        return { success: false, message: msg }; 
+    }
   };
 
   const handleSignup = async (userData: any) => {
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password || 'password123');
+        const userCredential = await createUserWithEmailAndPassword(auth, userData.email.trim(), userData.password || 'password123');
         const newUserId = userCredential.user.uid;
         const newUserProfile: User = {
-            id: newUserId, name: userData.name, email: userData.email, phone: userData.phone,
-            shopName: userData.shopName, shopAddress: userData.shopAddress, isVerified: true,
-            referralCode: `USER-${Math.floor(1000 + Math.random() * 9000)}`, referredBy: null,
+            id: newUserId, 
+            name: userData.name.trim(), 
+            email: userData.email.trim(), 
+            phone: userData.phone.trim(),
+            shopName: userData.shopName.trim(), 
+            shopAddress: userData.shopAddress, 
+            isVerified: true,
+            referralCode: `USER-${Math.floor(1000 + Math.random() * 9000)}`, 
+            referredBy: userData.referralCodeInput?.trim() || null,
             wallet: { balance: 0, totalSpend: 0, pendingDeposit: 0, pendingWithdrawal: 0 },
-            walletHistory: [], favorites: []
+            walletHistory: [], 
+            favorites: []
         };
-        await setDoc(doc(db, "users", newUserId), newUserProfile);
         setUser(newUserProfile);
+        
+        if (db) {
+            try {
+                await Promise.race([
+                    setDoc(doc(db, "users", newUserId), newUserProfile, { merge: true }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore write timeout")), 4000))
+                ]);
+            } catch (fsErr) {
+                console.warn("Firestore user creation note:", fsErr);
+            }
+        }
         return { success: true, message: 'Signup successful!', user: newUserProfile };
-    } catch (error: any) { return { success: false, message: error.message }; }
+    } catch (error: any) { 
+        console.error("Signup error:", error);
+        let msg = error.message;
+        if (error.code === 'auth/email-already-in-use') {
+            msg = 'This email is already registered. Please log in instead.';
+        } else if (error.code === 'auth/weak-password') {
+            msg = 'Password should be at least 6 characters.';
+        } else if (error.code === 'auth/invalid-email') {
+            msg = 'Please enter a valid email address.';
+        } else if (error.code === 'auth/network-request-failed') {
+            msg = 'Network error. Please check your internet connection.';
+        }
+        return { success: false, message: msg }; 
+    }
   };
 
   if (!isReady) {

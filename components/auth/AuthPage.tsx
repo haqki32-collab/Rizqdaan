@@ -3,9 +3,7 @@ import React, { useState } from 'react';
 import { User } from '../../types';
 import { PAKISTAN_LOCATIONS } from '../../constants';
 import { auth, db } from '../../firebaseConfig';
-import { signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification } from 'firebase/auth';
-
-type AuthStep = 'form' | 'verification_pending';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 
 interface AuthPageProps {
   onLogin: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
@@ -15,9 +13,7 @@ interface AuthPageProps {
 
 const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onSignup, onVerifyAndLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
-  const [step, setStep] = useState<AuthStep>('form');
   const [isLoading, setIsLoading] = useState(false);
-  const [resending, setResending] = useState(false);
   
   // Legal Modal States
   const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'tos' | 'privacy' }>({ isOpen: false, type: 'tos' });
@@ -52,27 +48,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onSignup, onVerifyAndLogin
       }
   };
 
-  const handleResendEmail = async () => {
-      setResending(true);
-      setError('');
-      try {
-          if (auth.currentUser) {
-              await sendEmailVerification(auth.currentUser);
-              setInfo("Verification email sent again. Please check your inbox!");
-          } else {
-              setError("Session expired. Please try to log in to trigger a new verification link.");
-          }
-      } catch (e: any) {
-          if (e.code === 'auth/too-many-requests') {
-              setError("Too many requests. Please wait a few minutes before trying again.");
-          } else {
-              setError(e.message);
-          }
-      } finally {
-          setResending(false);
-      }
-  };
-
   const clearForm = () => {
     setName(''); setEmail(''); setPhone(''); setShopName(''); 
     setPassword(''); setError(''); setInfo('');
@@ -82,7 +57,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onSignup, onVerifyAndLogin
 
   const handleModeToggle = (mode: 'login' | 'signup') => {
     setIsLogin(mode === 'login');
-    setStep('form');
     clearForm();
   };
 
@@ -95,11 +69,15 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onSignup, onVerifyAndLogin
       return;
     }
     setIsLoading(true);
-    const result = await onLogin(email, password);
-    setIsLoading(false);
-    
-    if (!result.success) {
-      setError(result.message);
+    try {
+      const result = await onLogin(email.trim(), password);
+      if (!result.success) {
+        setError(result.message);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -119,14 +97,31 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onSignup, onVerifyAndLogin
       return;
     }
 
-    setIsLoading(true);
-    const result = await onSignup({ name, email, phone, shopName, shopAddress: fullShopAddress, password, referralCodeInput });
-    setIsLoading(false);
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
 
-    if (result.success) {
-      setStep('verification_pending');
-    } else {
-      setError(result.message);
+    setIsLoading(true);
+    try {
+      const result = await onSignup({ 
+        name: name.trim(), 
+        email: email.trim(), 
+        phone: phone.trim(), 
+        shopName: shopName.trim(), 
+        shopAddress: fullShopAddress, 
+        password, 
+        referralCodeInput: referralCodeInput.trim() 
+      });
+      if (result.success) {
+        onVerifyAndLogin(result.user?.id || '');
+      } else {
+        setError(result.message);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -204,63 +199,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onSignup, onVerifyAndLogin
     </div>
   );
 
-  const renderVerificationPending = () => (
-    <div className="text-center py-6 animate-fade-in">
-        <div className="w-24 h-24 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
-            <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-        </div>
-        
-        <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4">Verify Your Email</h2>
-        
-        <div className="bg-blue-50 dark:bg-blue-900/10 p-5 rounded-2xl border border-blue-100 dark:border-blue-800 text-left space-y-4 mb-8">
-            <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
-                A verification link has been sent to your <span className="font-bold">email address</span>.
-            </p>
-            <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
-                Please check your <span className="font-bold">Inbox</span>. 
-            </p>
-            <p className="text-xs text-blue-700 dark:text-blue-300 italic bg-white/50 dark:bg-black/20 p-3 rounded-lg border border-blue-200/50">
-                "If you don't see the email, kindly check your <span className="font-bold underline">Spam</span> or <span className="font-bold underline">Trash</span> folder."
-            </p>
-        </div>
-
-        <div className="space-y-4">
-            <button 
-                onClick={handleResendEmail}
-                disabled={resending}
-                className="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-            >
-                {resending ? <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span> : 'Resend Verification Email'}
-            </button>
-            
-            <button 
-                onClick={() => handleModeToggle('login')}
-                className="w-full py-3 text-gray-500 font-bold hover:text-primary transition-colors text-sm"
-            >
-                &larr; Back to Login
-            </button>
-        </div>
-    </div>
-  );
-
   return (
     <div className="max-w-md mx-auto mt-4 px-2">
       <div className="bg-white dark:bg-dark-surface rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800">
-        {step === 'form' && (
-          <div className="flex bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-            <button onClick={() => handleModeToggle('login')} className={`flex-1 p-4 text-center font-black text-xs tracking-widest transition-all ${isLogin ? 'bg-white dark:bg-dark-surface text-primary border-b-4 border-primary' : 'text-gray-400'}`}>LOG IN</button>
-            <button onClick={() => handleModeToggle('signup')} className={`flex-1 p-4 text-center font-black text-xs tracking-widest transition-all ${!isLogin ? 'bg-white dark:bg-dark-surface text-primary border-b-4 border-primary' : 'text-gray-400'}`}>REGISTER</button>
-          </div>
-        )}
+        <div className="flex bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+          <button onClick={() => handleModeToggle('login')} className={`flex-1 p-4 text-center font-black text-xs tracking-widest transition-all ${isLogin ? 'bg-white dark:bg-dark-surface text-primary border-b-4 border-primary' : 'text-gray-400'}`}>LOG IN</button>
+          <button onClick={() => handleModeToggle('signup')} className={`flex-1 p-4 text-center font-black text-xs tracking-widest transition-all ${!isLogin ? 'bg-white dark:bg-dark-surface text-primary border-b-4 border-primary' : 'text-gray-400'}`}>REGISTER</button>
+        </div>
         <div className="p-8">
-            {step === 'form' && (
-                <div className="mb-8 text-center">
-                    <h2 className="text-2xl font-black text-gray-900 dark:text-white">{isLogin ? 'Welcome Back' : 'Join RizqDaan'}</h2>
-                    <p className="text-sm text-gray-500 mt-2">{isLogin ? 'Manage your ads and earnings.' : 'Start your digital shop in minutes.'}</p>
-                </div>
-            )}
+            <div className="mb-8 text-center">
+                <h2 className="text-2xl font-black text-gray-900 dark:text-white">{isLogin ? 'Welcome Back' : 'Join RizqDaan'}</h2>
+                <p className="text-sm text-gray-500 mt-2">{isLogin ? 'Manage your ads and earnings.' : 'Start your digital shop in minutes.'}</p>
+            </div>
             
             {error && (
                 <div className="bg-red-50 text-red-600 border border-red-200 p-4 rounded-2xl text-xs font-bold leading-relaxed mb-6 animate-pulse shadow-sm flex items-start gap-3">
@@ -276,7 +226,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onSignup, onVerifyAndLogin
                 </div>
             )}
             
-            {step === 'form' ? renderForm() : renderVerificationPending()}
+            {renderForm()}
         </div>
       </div>
       

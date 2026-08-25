@@ -30,6 +30,8 @@ const ManageHelpCenter: React.FC = () => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as HelpCategory));
             data.sort((a, b) => a.order - b.order);
             setCategories(data);
+        }, (err) => {
+            console.warn("Help categories admin note:", err.message);
         });
 
         // Listen to Topics
@@ -37,6 +39,9 @@ const ManageHelpCenter: React.FC = () => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as HelpTopic));
             data.sort((a, b) => a.order - b.order);
             setTopics(data);
+            setLoading(false);
+        }, (err) => {
+            console.warn("Help topics admin note:", err.message);
             setLoading(false);
         });
 

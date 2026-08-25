@@ -36,6 +36,8 @@ const VendorPromotions: React.FC<VendorPromotionsProps> = ({ user, initialListin
       const qListings = query(collection(db, 'listings'), where('vendorId', '==', user.id));
       const unsubListings = onSnapshot(qListings, (snap) => {
           setListings(snap.docs.map(d => ({ id: d.id, ...d.data() } as Listing)).filter(l => l.status === 'active'));
+      }, (err) => {
+          console.warn("Vendor listings note:", err.message);
       });
 
       const qCampaigns = query(collection(db, 'campaigns'), where('vendorId', '==', user.id));
@@ -46,11 +48,16 @@ const VendorPromotions: React.FC<VendorPromotionsProps> = ({ user, initialListin
           try {
               localStorage.setItem('user_campaigns_cache', JSON.stringify(cleanForStorage(data)));
           } catch(e) {}
+      }, (err) => {
+          console.warn("Vendor campaigns note:", err.message);
+          setLoading(false);
       });
 
       const pricingRef = doc(db, 'settings', 'ad_pricing');
       const unsubPricing = onSnapshot(pricingRef, (docSnap) => {
           if (docSnap.exists()) setAdRates(docSnap.data() as any);
+      }, (err) => {
+          console.warn("Vendor pricing note:", err.message);
       });
 
       return () => { unsubListings(); unsubCampaigns(); unsubPricing(); };

@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Listing } from '../../types';
 import { db } from '../../firebaseConfig';
 import { collection, query, where, getDocs, updateDoc, increment, doc } from 'firebase/firestore';
@@ -10,73 +10,41 @@ interface ListingCardProps {
 }
 
 const ListingCard: React.FC<ListingCardProps> = ({ listing, onViewDetails }) => {
-  // --- ANALYTICS LOGIC: IMPRESSION TRACKING (SYNCED) ---
-  useEffect(() => {
-    let isMounted = true;
-    if (db) {
-      const trackInteraction = async () => {
-        try {
-          // Rule: Always update total views on the listing first
-          const listingRef = doc(db, 'listings', listing.id);
-          await updateDoc(listingRef, { views: increment(1) });
-
-          // Rule: If promoted, also update the specific campaign impressions
-          if (listing.isPromoted) {
-            const q = query(
-              collection(db, 'campaigns'), 
-              where('listingId', '==', listing.id),
-              where('status', '==', 'active')
-            );
-            const snap = await getDocs(q);
-            if (isMounted && !snap.empty) {
-                const activeCampaignDoc = snap.docs[0];
-                const d = activeCampaignDoc.data();
-                const newImpr = (d.impressions || 0) + 1;
-                const clicks = d.clicks || 0;
-                const newCtr = Number(((clicks / newImpr) * 100).toFixed(2));
-
-                await updateDoc(activeCampaignDoc.ref, {
-                    impressions: increment(1),
-                    ctr: newCtr
-                });
-            }
-          }
-        } catch (e) {
-          console.warn("View tracking failed: ", e);
-        }
-      };
-      trackInteraction();
-    }
-    return () => { isMounted = false; };
-  }, [listing.id, listing.isPromoted]);
-
   const handleCardClick = async () => {
-    if (listing.isPromoted && db) {
+    // Only track click when user actively interacts with the listing
+    if (db && listing.id) {
       try {
-        const q = query(
-          collection(db, 'campaigns'), 
-          where('listingId', '==', listing.id),
-          where('status', '==', 'active')
-        );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const activeCampaignDoc = snap.docs[0];
-          const d = activeCampaignDoc.data();
-          const newClicks = (d.clicks || 0) + 1;
-          const impr = d.impressions || 1;
-          const newCtr = Number(((newClicks / impr) * 100).toFixed(2));
+        const listingRef = doc(db, 'listings', listing.id);
+        updateDoc(listingRef, { views: increment(1) }).catch(() => {});
 
-          await updateDoc(activeCampaignDoc.ref, {
-            clicks: increment(1),
-            ctr: newCtr
-          });
+        if (listing.isPromoted) {
+          const q = query(
+            collection(db, 'campaigns'), 
+            where('listingId', '==', listing.id),
+            where('status', '==', 'active')
+          );
+          getDocs(q).then((snap) => {
+            if (!snap.empty) {
+              const activeCampaignDoc = snap.docs[0];
+              const d = activeCampaignDoc.data();
+              const newClicks = (d.clicks || 0) + 1;
+              const impr = d.impressions || 1;
+              const newCtr = Number(((newClicks / impr) * 100).toFixed(2));
+
+              updateDoc(activeCampaignDoc.ref, {
+                clicks: increment(1),
+                ctr: newCtr
+              }).catch(() => {});
+            }
+          }).catch(() => {});
         }
       } catch (e) {
-        console.warn("Analytics Click failed: ", e);
+        // Silent catch to prevent UI break
       }
     }
     onViewDetails(listing);
   };
+
 
   const StarRating = ({ rating, reviewsCount }: { rating: number, reviewsCount: number }) => {
     return (

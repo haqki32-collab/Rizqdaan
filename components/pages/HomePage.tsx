@@ -12,6 +12,9 @@ interface HomePageProps {
   onNavigate: (view: 'listings' | 'details' | 'subcategories' | any, payload?: { listing?: Listing; category?: Category; query?: string }) => void;
   onSaveSearch: (query: string) => void;
   onOpenBonusModal?: () => void;
+  loadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
 }
 
 const shuffleArray = (array: any[]) => {
@@ -49,10 +52,20 @@ const PAK_CITIES_COORDS = [
   { city: 'Gilgit', province: 'Gilgit-Baltistan', lat: 35.9208, lng: 74.3089 },
 ];
 
-const HomePage: React.FC<HomePageProps> = ({ listings, categories = [], onNavigate, onSaveSearch, onOpenBonusModal }) => {
+const HomePage: React.FC<HomePageProps> = ({ 
+  listings, 
+  categories = [], 
+  onNavigate, 
+  onSaveSearch, 
+  onOpenBonusModal,
+  loadMore,
+  hasMore,
+  isLoadingMore
+}) => {
   const { t, language, setLanguage, isUrdu } = useLanguage();
   const [banners, setBanners] = useState<HomeBanner[]>(DEFAULT_BANNERS);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(16);
   
   const displayCategories = categories.length > 0 ? categories : DEFAULT_CATEGORIES;
 
@@ -62,10 +75,21 @@ const HomePage: React.FC<HomePageProps> = ({ listings, categories = [], onNaviga
       return 0;
   });
 
-  const featuredListings = sortedListings.filter(l => l.isPromoted).slice(0, 10);
-  const remainingListings = sortedListings.filter(l => !l.isPromoted);
+  const featuredListings = sortedListings.filter(l => l.isPromoted);
+  const regularListings = featuredListings.length > 0 
+    ? sortedListings.filter(l => !l.isPromoted) 
+    : sortedListings;
   
-  const [randomListings, setRandomListings] = useState<Listing[]>([]);
+  const displayedRegularListings = regularListings.slice(0, visibleCount);
+
+  const handleShowMore = () => {
+    if (visibleCount < regularListings.length) {
+      setVisibleCount(prev => prev + 12);
+    } else if (hasMore && loadMore) {
+      loadMore();
+      setVisibleCount(prev => prev + 12);
+    }
+  };
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -104,12 +128,6 @@ const HomePage: React.FC<HomePageProps> = ({ listings, categories = [], onNaviga
       });
       return () => unsub();
   }, []);
-
-  useEffect(() => {
-    if (remainingListings.length > 0) {
-      setRandomListings(shuffleArray([...remainingListings]).slice(0, 8));
-    }
-  }, [listings]); 
 
   useEffect(() => {
       if (banners.length <= 1) return;
@@ -539,35 +557,94 @@ const HomePage: React.FC<HomePageProps> = ({ listings, categories = [], onNaviga
         </div>
       </div>
 
-      {/* 🔥 FEATURED LISTINGS */}
+      {/* 🔥 FEATURED LISTINGS (Show if any are promoted) */}
+      {featuredListings.length > 0 && (
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-2 mt-3 px-1">
+              <h2 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-1.5">
+                <span className="text-amber-500">🔥</span>
+                {t('featuredListings')}
+                <span className="text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-1.5 py-0.5 rounded-full">
+                  {featuredListings.length}
+                </span>
+              </h2>
+              <span className="text-[11px] text-primary font-bold cursor-pointer hover:underline" onClick={() => onNavigate('listings')}>
+                {t('seeAll')}
+              </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {featuredListings.map((listing) => (
+              <ListingCard key={`featured-${listing.id}`} listing={listing} onViewDetails={(l) => onNavigate('details', { listing: l })} />
+            ))}
+          </div>
+          <hr className="border-gray-100 dark:border-gray-800 my-4" />
+        </div>
+      )}
+
+      {/* ✨ FRESH RECOMMENDATIONS / ALL LISTINGS */}
       <div>
-        <div className="flex justify-between items-center mb-2 mt-3 px-1">
-            <h2 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-1">
-              {t('featuredListings')}
-            </h2>
-            <span className="text-[11px] text-primary font-bold cursor-pointer hover:underline" onClick={() => onNavigate('listings')}>
-              {t('seeAll')}
+        <div className="flex justify-between items-center mb-3 px-1">
+          <h2 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-1.5">
+            <span className="text-primary">✨</span>
+            {t('freshRecommendations')}
+            <span className="text-[10px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full">
+              {regularListings.length}
             </span>
+          </h2>
+          <span className="text-[11px] text-primary font-bold cursor-pointer hover:underline" onClick={() => onNavigate('listings')}>
+            {isUrdu ? 'تمام دیکھیں' : 'View All'}
+          </span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {featuredListings.length > 0 ? featuredListings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} onViewDetails={(l) => onNavigate('details', { listing: l })} />
-          )) : <p className="col-span-full text-center text-xs text-gray-500 py-4">{t('noItems')}</p>}
-        </div>
-      </div>
 
-      <hr className="border-gray-100 dark:border-gray-800 my-2" />
+        {displayedRegularListings.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {displayedRegularListings.map((listing) => (
+              <ListingCard key={listing.id} listing={listing} onViewDetails={(l) => onNavigate('details', { listing: l })} />
+            ))}
+          </div>
+        ) : (
+          <div className="col-span-full py-12 text-center bg-white dark:bg-dark-surface rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+            <span className="text-3xl mb-2 block">🛍️</span>
+            <h3 className="text-sm font-bold text-gray-800 dark:text-white">
+              {isUrdu ? 'ابھی کوئی اشتہار دستیاب نہیں ہے' : 'No listings available yet'}
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              {isUrdu ? 'پہلا اشتہار لگانے کے لیے نیچے + پر کلک کریں' : 'Be the first to post a listing!'}
+            </p>
+          </div>
+        )}
 
-      {/* ✨ FRESH RECOMMENDATIONS */}
-      <div>
-        <h2 className="text-sm font-bold text-gray-800 dark:text-white mb-2 px-1">
-          {t('freshRecommendations')}
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {randomListings.map((listing, index) => (
-            <ListingCard key={`${listing.id}-${index}`} listing={listing} onViewDetails={(l) => onNavigate('details', { listing: l })} />
-          ))}
-        </div>
+        {/* 🔄 LOAD MORE BUTTON */}
+        {(visibleCount < regularListings.length || hasMore) && (
+          <div className="mt-8 mb-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={handleShowMore}
+              disabled={isLoadingMore}
+              className="w-full sm:w-auto px-8 py-3 bg-white dark:bg-dark-surface hover:bg-gray-50 dark:hover:bg-gray-800 text-primary dark:text-emerald-400 border border-primary/20 dark:border-gray-700 font-bold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2"
+            >
+              {isLoadingMore ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+                  <span>{isUrdu ? 'لوڈ ہو رہا ہے...' : 'Loading...'}</span>
+                </>
+              ) : (
+                <>
+                  <span>{isUrdu ? `مزید اشتہارات دیکھیں (${displayedRegularListings.length} / ${regularListings.length})` : `Load More Listings (${displayedRegularListings.length} of ${regularListings.length})`}</span>
+                  <span className="text-sm">↓</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('listings')}
+              className="w-full sm:w-auto px-6 py-3 bg-primary/10 hover:bg-primary/20 text-primary dark:text-emerald-300 font-bold text-xs rounded-xl transition-all"
+            >
+              {isUrdu ? 'تمام کیٹلاگ براؤز کریں ➔' : 'Browse Full Catalog ➔'}
+            </button>
+          </div>
+        )}
       </div>
       
       {isLoading && <div className="flex justify-center items-center py-4"><div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent"></div></div>}

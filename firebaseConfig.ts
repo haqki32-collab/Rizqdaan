@@ -1,7 +1,7 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore, Firestore } from "firebase/firestore";
 import { getMessaging } from "firebase/messaging";
 
 const firebaseConfig = {
@@ -15,7 +15,16 @@ const firebaseConfig = {
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-const db = getFirestore(app);
+let db: Firestore;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+} catch (e) {
+  db = getFirestore(app);
+}
 
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
@@ -25,3 +34,4 @@ const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 
 export const isFirebaseConfigured = () => !!firebaseConfig.apiKey;
 export { auth, db, googleProvider, messaging };
+

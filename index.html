@@ -28,6 +28,37 @@
   <meta property="twitter:description" content="Find trusted local vendors, food points, services, and freelancers. Start listing your business for free on RizqDaan." />
   <meta property="twitter:image" content="https://rizqdaan.com/assets/logo-share.png" />
 
+  <!-- Google SearchAction & WebSite JSON-LD Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "RizqDaan",
+    "alternateName": ["Rizqdaan Pakistan", "Rizq Daan", "رزق دان"],
+    "url": "https://rizqdaan.com/",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://rizqdaan.com/?search={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "RizqDaan",
+    "url": "https://rizqdaan.com/",
+    "logo": "https://rizqdaan.com/assets/logo-share.png",
+    "sameAs": [],
+    "description": "Pakistan's premier local classifieds and business directory platform."
+  }
+  </script>
+
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">

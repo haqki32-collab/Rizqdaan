@@ -54,6 +54,106 @@ const ListingDetailsPage: React.FC<ListingDetailsPageProps> = ({ listing, listin
             .slice(0, 4);
     }, [listings, listing.id, listing.category]);
 
+    // 🚀 DYNAMIC SEO & GOOGLE STRUCTURED DATA INJECTION
+    useEffect(() => {
+        if (!listing) return;
+
+        // 1. Update Document Title
+        const pageTitle = `${listing.title} in ${listing.location} - Rs. ${listing.price.toLocaleString()} | RizqDaan`;
+        document.title = pageTitle;
+
+        // 2. Helper to set/create meta tag
+        const setMetaTag = (attr: string, key: string, content: string) => {
+            let el = document.querySelector(`meta[${attr}="${key}"]`);
+            if (!el) {
+                el = document.createElement('meta');
+                el.setAttribute(attr, key);
+                document.head.appendChild(el);
+            }
+            el.setAttribute('content', content);
+        };
+
+        const cleanDesc = (listing.description || `${listing.title} available in ${listing.location} on RizqDaan Pakistan.`)
+            .replace(/\s+/g, ' ')
+            .slice(0, 160);
+
+        const currentUrl = `${window.location.origin}/?listing=${listing.id}`;
+
+        // Standard SEO Meta
+        setMetaTag('name', 'description', cleanDesc);
+        setMetaTag('name', 'keywords', `${listing.title}, buy ${listing.title}, ${listing.category} in ${listing.location}, RizqDaan Pakistan, classifieds`);
+        
+        // OpenGraph / Facebook / WhatsApp Preview
+        setMetaTag('property', 'og:title', pageTitle);
+        setMetaTag('property', 'og:description', cleanDesc);
+        setMetaTag('property', 'og:image', listing.imageUrl || images[0] || 'https://rizqdaan.com/assets/logo-share.png');
+        setMetaTag('property', 'og:url', currentUrl);
+        setMetaTag('property', 'og:type', 'product');
+
+        // Twitter Card
+        setMetaTag('property', 'twitter:title', pageTitle);
+        setMetaTag('property', 'twitter:description', cleanDesc);
+        setMetaTag('property', 'twitter:image', listing.imageUrl || images[0] || 'https://rizqdaan.com/assets/logo-share.png');
+
+        // Canonical Tag
+        let canonicalEl = document.querySelector('link[rel="canonical"]');
+        if (!canonicalEl) {
+            canonicalEl = document.createElement('link');
+            canonicalEl.setAttribute('rel', 'canonical');
+            document.head.appendChild(canonicalEl);
+        }
+        canonicalEl.setAttribute('href', currentUrl);
+
+        // 3. Google Product Schema (JSON-LD)
+        const schemaId = 'google-product-schema';
+        let scriptEl = document.getElementById(schemaId) as HTMLScriptElement;
+        if (!scriptEl) {
+            scriptEl = document.createElement('script');
+            scriptEl.id = schemaId;
+            scriptEl.type = 'application/ld+json';
+            document.head.appendChild(scriptEl);
+        }
+
+        const productSchema = {
+            "@context": "https://schema.org/",
+            "@type": "Product",
+            "name": listing.title,
+            "image": images,
+            "description": cleanDesc,
+            "brand": {
+                "@type": "Brand",
+                "name": vendorData?.shopName || listing.vendorName || "RizqDaan Seller"
+            },
+            "offers": {
+                "@type": "Offer",
+                "url": currentUrl,
+                "priceCurrency": "PKR",
+                "price": listing.price,
+                "priceValidUntil": "2027-12-31",
+                "itemCondition": listing.condition === 'Used' ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition",
+                "availability": listing.status === 'active' ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+                "seller": {
+                    "@type": "Person",
+                    "name": vendorData?.shopName || listing.vendorName || "RizqDaan Seller"
+                }
+            },
+            ...(reviews.length > 0 ? {
+                "aggregateRating": {
+                    "@type": "AggregateRating",
+                    "ratingValue": listing.rating || 5,
+                    "reviewCount": reviews.length
+                }
+            } : {})
+        };
+
+        scriptEl.textContent = JSON.stringify(productSchema);
+
+        return () => {
+            // Restore default title on unmount
+            document.title = "RizqDaan - Pakistan's Trusted Local Business Listings & Directory";
+        };
+    }, [listing, vendorData, images, reviews]);
+
     useEffect(() => {
         setReviews(listing.reviews || []);
         setActiveIndex(0);

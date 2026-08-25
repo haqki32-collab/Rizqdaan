@@ -489,7 +489,7 @@ const App: React.FC = () => {
 
   const renderView = () => {
     switch (view) {
-      case 'home': return <HomePage listings={listingsDB} categories={categories} onNavigate={handleNavigate as any} onSaveSearch={() => {}} onOpenBonusModal={() => setShowLaunchBonusModal(true)} />;
+      case 'home': return <HomePage listings={listingsDB} categories={categories} onNavigate={handleNavigate as any} onSaveSearch={() => {}} onOpenBonusModal={() => setShowLaunchBonusModal(true)} loadMore={fetchMoreListings} hasMore={hasMoreListings} isLoadingMore={loadingData} />;
       case 'listings': return <ListingsPage listings={listingsDB} onNavigate={(v, p) => handleNavigate('details', p)} initialSearchTerm={searchQuery} loadMore={fetchMoreListings} hasMore={hasMoreListings} isLoading={loadingData} />;
       case 'details': return selectedListing ? <ListingDetailsPage listing={selectedListing} listings={listingsDB} user={user} onNavigate={handleNavigate as any} /> : null;
       case 'vendor-dashboard': return <VendorDashboard initialTab={initialVendorTab} listings={listingsDB} user={user} onNavigate={handleNavigate as any} />;
@@ -508,7 +508,7 @@ const App: React.FC = () => {
       case 'wallet-history': return user ? <WalletHistoryPage user={user} onNavigate={() => handleGoBack()} /> : null;
       case 'notifications': return user ? <NotificationsPage user={user} onNavigate={handleNavigate as any} /> : null;
       case 'help-center': return <HelpCenterPage onNavigate={() => handleGoBack()} />;
-      default: return <HomePage listings={listingsDB} categories={categories} onNavigate={handleNavigate as any} onSaveSearch={() => {}} onOpenBonusModal={() => setShowLaunchBonusModal(true)} />;
+      default: return <HomePage listings={listingsDB} categories={categories} onNavigate={handleNavigate as any} onSaveSearch={() => {}} onOpenBonusModal={() => setShowLaunchBonusModal(true)} loadMore={fetchMoreListings} hasMore={hasMoreListings} isLoadingMore={loadingData} />;
     }
   };
 

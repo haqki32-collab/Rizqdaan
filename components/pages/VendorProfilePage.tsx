@@ -63,6 +63,8 @@ const VendorProfilePage: React.FC<VendorProfilePageProps> = ({ vendorId, current
         } else {
             setVendor(null);
         }
+    }, (err) => {
+        console.warn("Vendor profile listener note:", err.message);
     });
 
     return () => unsubscribe();

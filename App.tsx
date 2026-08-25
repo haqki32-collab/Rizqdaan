@@ -48,12 +48,30 @@ const App: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   
-  const [listingsDB, setListingsDB] = useState<Listing[]>([]);
+  const [listingsDB, setListingsDB] = useState<Listing[]>(() => {
+    try {
+        const cached = localStorage.getItem('rizq_cached_listings');
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+    } catch(e) {}
+    return [];
+  });
   const [lastListingDoc, setLastListingDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMoreListings, setHasMoreListings] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   
-  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState<Category[]>(() => {
+    try {
+        const cached = localStorage.getItem('rizq_cached_categories');
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+    } catch(e) {}
+    return DEFAULT_CATEGORIES;
+  });
   const [chatTargetUser, setChatTargetUser] = useState<{id: string, name: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [initialVendorTab, setInitialVendorTab] = useState<'dashboard' | 'my-listings' | 'add-listing' | 'promotions'>('dashboard');
@@ -292,9 +310,14 @@ const App: React.FC = () => {
       const q = query(collection(db, "listings"), orderBy("createdAt", "desc"), limit(20));
       const unsubscribe = onSnapshot(q, (snapshot) => {
           const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing));
-          setListingsDB(items);
+          if (items.length > 0) {
+              setListingsDB(items);
+              try { localStorage.setItem('rizq_cached_listings', JSON.stringify(items)); } catch(e) {}
+          }
           setLastListingDoc(snapshot.docs[snapshot.docs.length - 1] || null);
           setHasMoreListings(snapshot.docs.length >= 20);
+      }, (err) => {
+          console.warn("Listings snapshot note (handled):", err.message);
       });
       return () => unsubscribe();
   }, [isReady]);
@@ -306,13 +329,12 @@ const App: React.FC = () => {
           const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
           if (items.length > 0) {
               setCategories(items);
+              try { localStorage.setItem('rizq_cached_categories', JSON.stringify(items)); } catch(e) {}
           } else {
               setCategories(DEFAULT_CATEGORIES);
           }
       }, (err) => {
-          if (!err.message.includes('permission')) {
-              console.error("Categories fetch error:", err.message);
-          }
+          console.warn("Categories fetch note (handled):", err.message);
       });
       return () => unsubscribe();
   }, [isReady]);

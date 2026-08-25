@@ -24,12 +24,17 @@ const HelpCenterPage: React.FC<HelpCenterPageProps> = ({ onNavigate }) => {
         const unsubCats = onSnapshot(query(collection(db, 'help_categories'), where('isActive', '==', true)), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as HelpCategory));
             setCategories(data.sort((a, b) => (a.order || 0) - (b.order || 0)));
+        }, (err) => {
+            console.warn("Help categories listen note:", err.message);
         });
 
         // 2. Listen to Help Topics - Standardized Ordering
         const unsubTopics = onSnapshot(query(collection(db, 'help_topics'), where('isActive', '==', true)), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as HelpTopic));
             setTopics(data.sort((a, b) => (a.order || 0) - (b.order || 0)));
+            setLoading(false);
+        }, (err) => {
+            console.warn("Help topics listen note:", err.message);
             setLoading(false);
         });
 

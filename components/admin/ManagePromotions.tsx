@@ -46,6 +46,8 @@ const ManagePromotions: React.FC<ManagePromotionsProps> = ({ users }) => {
             try {
                 localStorage.setItem('admin_campaigns_cache', JSON.stringify(cleanForStorage(data)));
             } catch(e) {}
+        }, (err) => {
+            console.warn("Campaigns listen note:", err.message);
         });
 
         const pricingRef = doc(db, 'settings', 'ad_pricing');
@@ -53,6 +55,8 @@ const ManagePromotions: React.FC<ManagePromotionsProps> = ({ users }) => {
             if (docSnap.exists()) {
                 setAdRates(docSnap.data() as any);
             }
+        }, (err) => {
+            console.warn("Pricing listen note:", err.message);
         });
 
         return () => {
